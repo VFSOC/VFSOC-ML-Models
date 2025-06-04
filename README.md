@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # VFSOC ML Models - GPS Jamming Detection
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
@@ -275,3 +276,6 @@ For questions and support:
 - VFSOC project team for infrastructure and requirements
 - Research community for GPS jamming detection methodologies
 - Open source ML community for tools and frameworks 
+=======
+# VFSOC-ML-Models
+>>>>>>> a56e80c169df664c6ca637533262909c7694b4e7
