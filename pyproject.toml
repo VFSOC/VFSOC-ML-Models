@@ -1,0 +1,189 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vfsoc-ml"
+version = "0.1.0"
+description = "Machine Learning models for VFSOC GPS Jamming Detection"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "VFSOC Team", email = "vfsoc@example.com"}
+]
+maintainers = [
+    {name = "VFSOC Team", email = "vfsoc@example.com"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+keywords = ["gps", "jamming", "detection", "machine-learning", "security", "vehicle", "fleet"]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "scikit-learn>=1.1.0",
+    "scipy>=1.7.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=0.20.0",
+    "loguru>=0.6.0",
+    "tqdm>=4.64.0",
+    "click>=8.1.0",
+    "joblib>=1.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.1.0",
+    "pytest-cov>=3.0.0",
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+    "pre-commit>=2.19.0",
+]
+ml = [
+    "tensorflow>=2.8.0",
+    "torch>=1.12.0",
+    "pyod>=1.0.0",
+    "tsfresh>=0.19.0",
+    "librosa>=0.9.0",
+]
+deployment = [
+    "onnx>=1.12.0",
+    "onnxruntime>=1.12.0",
+    "mlflow>=1.28.0",
+    "fastapi>=0.78.0",
+    "uvicorn>=0.18.0",
+]
+viz = [
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "plotly>=5.8.0",
+    "jupyter>=1.0.0",
+]
+all = ["vfsoc-ml[dev,ml,deployment,viz]"]
+
+[project.urls]
+Homepage = "https://github.com/vfsoc/vfsoc-ml-models"
+Documentation = "https://vfsoc-ml-models.readthedocs.io"
+Repository = "https://github.com/vfsoc/vfsoc-ml-models.git"
+"Bug Tracker" = "https://github.com/vfsoc/vfsoc-ml-models/issues"
+
+[project.scripts]
+vfsoc-train = "vfsoc_ml.cli:train"
+vfsoc-evaluate = "vfsoc_ml.cli:evaluate"
+vfsoc-convert = "vfsoc_ml.cli:convert_to_onnx"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["vfsoc_ml"]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "sklearn.*",
+    "pandas.*",
+    "numpy.*",
+    "matplotlib.*",
+    "seaborn.*",
+    "plotly.*",
+    "tensorflow.*",
+    "torch.*",
+    "onnx.*",
+    "mlflow.*",
+    "librosa.*",
+    "pyod.*",
+    "tsfresh.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/vfsoc_ml",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+[tool.coverage.run]
+source = ["src/vfsoc_ml"]
+omit = [
+    "*/tests/*",
+    "*/test_*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/env/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+] 

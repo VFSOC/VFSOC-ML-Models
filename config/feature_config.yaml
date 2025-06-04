@@ -1,0 +1,273 @@
+# VFSOC Feature Engineering Configuration
+# GPS Jamming Detection Feature Extraction and Processing
+
+# Data Source Configuration
+data_source:
+  geotab_connector_path: "../VFSOC-log_generation/log_simulator/connectors/geotab_connector.py"
+  vehilog_format: true
+  synthetic_data: true
+  real_data: false
+
+# Signal Processing Features
+signal_features:
+  # GPS Signal Strength Features
+  gps_signal_strength:
+    enabled: true
+    features:
+      - "current_signal_strength"
+      - "average_signal_strength"
+      - "min_signal_strength"
+      - "max_signal_strength"
+      - "signal_strength_variance"
+      - "signal_strength_std"
+      - "signal_strength_range"
+    
+  # Signal Loss Detection
+  signal_loss:
+    enabled: true
+    features:
+      - "is_signal_loss"
+      - "signal_loss_count"
+      - "signal_loss_rate"
+      - "signal_loss_duration"
+      - "consecutive_loss_events"
+    thresholds:
+      signal_loss_threshold: 0.0
+      min_signal_threshold: 10.0
+      
+  # Jamming Event Features
+  jamming_events:
+    enabled: true
+    features:
+      - "is_gps_jamming_event"
+      - "jamming_event_number"
+      - "jamming_events_per_trip"
+      - "average_jamming_events_per_trip"
+      - "max_jamming_events_per_trip"
+      - "jamming_frequency"
+
+# Temporal Features
+temporal_features:
+  # Time-based Windows
+  time_windows:
+    enabled: true
+    windows: [5, 10, 30, 60]  # minutes
+    features:
+      - "signal_loss_count_window"
+      - "jamming_events_window"
+      - "signal_strength_trend"
+      - "signal_variability_window"
+  
+  # Sequence Features
+  sequence_features:
+    enabled: true
+    sequence_length: 50
+    features:
+      - "signal_strength_sequence"
+      - "loss_pattern_sequence"
+      - "time_gap_sequence"
+      - "fourier_features"
+  
+  # Statistical Features over Time
+  rolling_statistics:
+    enabled: true
+    windows: [10, 30, 60]  # time points
+    statistics: ["mean", "std", "min", "max", "median", "skew", "kurtosis"]
+
+# Trip-based Features
+trip_features:
+  enabled: true
+  features:
+    - "trip_id"
+    - "trips_with_jamming"
+    - "jamming_trip_ratio"
+    - "trip_duration"
+    - "jamming_density_per_trip"
+    - "trip_signal_quality_score"
+  
+  # Trip Clustering
+  clustering:
+    enabled: true
+    method: "dbscan"
+    parameters:
+      eps: 0.5
+      min_samples: 3
+
+# Contextual Features
+contextual_features:
+  # Location Features
+  location:
+    enabled: true
+    features:
+      - "has_location"
+      - "latitude"
+      - "longitude"
+      - "location_string"
+      - "is_geofence_event"
+      - "distance_from_base"
+    
+  # Temporal Context
+  temporal_context:
+    enabled: true
+    features:
+      - "event_hour"
+      - "is_off_hours"
+      - "is_weekend"
+      - "day_of_week"
+      - "time_since_last_event"
+  
+  # Vehicle Context
+  vehicle_context:
+    enabled: true
+    features:
+      - "vehicle_id"
+      - "driver_id"
+      - "speed"
+      - "bearing"
+      - "ignition_status"
+
+# Advanced Signal Processing
+advanced_signal_processing:
+  # Frequency Domain Analysis
+  frequency_analysis:
+    enabled: true
+    features:
+      - "fft_features"
+      - "spectral_centroid"
+      - "spectral_bandwidth"
+      - "spectral_contrast"
+      - "zero_crossing_rate"
+    window_size: 128
+    overlap: 0.5
+  
+  # Wavelet Analysis
+  wavelet_analysis:
+    enabled: true
+    wavelet: "db4"
+    levels: 4
+    features:
+      - "wavelet_energy"
+      - "wavelet_entropy"
+      - "wavelet_variance"
+  
+  # Pattern Detection
+  pattern_detection:
+    enabled: true
+    features:
+      - "autocorrelation"
+      - "cross_correlation"
+      - "periodicity_score"
+      - "trend_strength"
+      - "seasonality_strength"
+
+# Anomaly Detection Features
+anomaly_features:
+  # Statistical Anomaly Indicators
+  statistical_anomalies:
+    enabled: true
+    features:
+      - "z_score"
+      - "modified_z_score"
+      - "iqr_outlier_score"
+      - "isolation_score"
+    
+  # Change Point Detection
+  change_point:
+    enabled: true
+    algorithm: "pelt"
+    features:
+      - "change_points_count"
+      - "change_point_magnitude"
+      - "time_since_change_point"
+
+# Feature Engineering Parameters
+feature_engineering:
+  # Data Preprocessing
+  preprocessing:
+    handle_missing_values: "interpolate"  # Options: drop, fill, interpolate
+    outlier_handling: "clip"  # Options: remove, clip, transform
+    outlier_threshold: 3.0  # Standard deviations
+    
+  # Feature Scaling
+  scaling:
+    method: "robust"  # Options: standard, minmax, robust, normalizer
+    feature_range: [0, 1]  # For MinMaxScaler
+    
+  # Feature Transformation
+  transformation:
+    log_transform: ["signal_strength_variance"]
+    sqrt_transform: ["signal_loss_count"]
+    polynomial_features:
+      enabled: false
+      degree: 2
+      interaction_only: false
+
+# Feature Selection
+feature_selection:
+  # Correlation-based Selection
+  correlation_filter:
+    enabled: true
+    threshold: 0.95  # Remove highly correlated features
+    
+  # Variance-based Selection
+  variance_filter:
+    enabled: true
+    threshold: 0.01  # Remove low variance features
+    
+  # Importance-based Selection
+  importance_filter:
+    enabled: true
+    method: "random_forest"
+    n_features: 30
+    
+  # Statistical Tests
+  statistical_tests:
+    enabled: true
+    test: "mutual_info"  # Options: chi2, f_classif, mutual_info
+    k_best: 25
+
+# Performance Optimization
+performance:
+  # Parallel Processing
+  parallel_processing:
+    enabled: true
+    n_jobs: -1  # Use all available cores
+    
+  # Memory Optimization
+  memory_optimization:
+    chunk_size: 10000
+    low_memory: true
+    
+  # Caching
+  caching:
+    enabled: true
+    cache_dir: "data/cache"
+    
+# Validation
+validation:
+  # Feature Quality Checks
+  quality_checks:
+    check_missing_values: true
+    check_infinite_values: true
+    check_duplicate_features: true
+    check_constant_features: true
+    
+  # Feature Distribution Analysis
+  distribution_analysis:
+    enabled: true
+    plot_distributions: true
+    statistical_tests: true
+
+# Output Configuration
+output:
+  # Feature Store
+  feature_store:
+    enabled: false
+    format: "parquet"  # Options: csv, parquet, hdf5
+    compression: "snappy"
+    
+  # Feature Documentation
+  documentation:
+    auto_generate: true
+    include_statistics: true
+    include_plots: true 
