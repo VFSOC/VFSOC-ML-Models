@@ -1,6 +1,11 @@
-"""Data handling modules for VFSOC ML models."""
+"""
+Data handling module for irregular energy consumption detection.
+"""
 
-from .synthetic_generator import SyntheticDataGenerator
-from .data_loader import VFSOCDataLoader
+from .data_loader import EnergyConsumptionDataLoader
+from .feature_engineering import EnergyConsumptionFeatureEngineer
 
-__all__ = ["SyntheticDataGenerator", "VFSOCDataLoader"] 
+__all__ = [
+    "EnergyConsumptionDataLoader",
+    "EnergyConsumptionFeatureEngineer",
+] 

@@ -1,5 +1,4 @@
-<<<<<<< HEAD
-# VFSOC ML Models - GPS Jamming Detection
+# VFSOC ML Models - Comprehensive Anomaly Detection Platform
 
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -7,36 +6,118 @@
 
 ## Overview
 
-This repository contains machine learning models for the VFSOC (Vehicle Fleet Security Operations Center) project, specifically focused on **GPS Jamming Detection** using advanced signal processing and anomaly detection techniques.
+This repository contains a comprehensive machine learning platform for the VFSOC (Vehicle Fleet Security Operations Center) project, designed to detect various types of anomalies across vehicle fleet operations and infrastructure systems.
 
-## Problem Statement
+**Current MVP: Irregular Energy Consumption Pattern Detection**
 
-GPS jamming attacks represent a critical security threat to vehicle fleets, where malicious actors use jamming devices to disrupt GPS signals. This can lead to:
+The platform currently focuses on detecting irregular energy consumption patterns in EV charging stations using unsupervised anomaly detection techniques, with architecture designed to support future extensions.
 
-- Loss of vehicle tracking capabilities
-- Potential vehicle theft
-- Fleet operational disruptions
-- Safety risks for drivers and cargo
+## Platform Capabilities
 
-## Solution Approach
+### Current Implementation (MVP)
+**Irregular Energy Consumption Pattern Detection** for EV charging stations can identify:
 
-Our ML-based GPS jamming detection system uses:
+- **Meter Tampering**: Manipulation of energy measurement devices
+- **Unauthorized Power Drain**: Excessive or unauthorized energy consumption  
+- **Broken Billing Logic**: Faulty billing calculations and discrepancies
+- **Station Configuration Errors**: Misconfigured charging equipment parameters
+- **Equipment Malfunction**: Hardware failures affecting energy delivery
 
-- **Signal Processing Features**: GPS signal strength, loss patterns, temporal analysis
-- **Anomaly Detection**: Statistical and machine learning approaches to identify unusual signal patterns
-- **Ensemble Methods**: Combining multiple algorithms for robust detection
-- **Real-time Processing**: Models optimized for production deployment with ONNX
+### Future Extensions (Planned)
 
-## Key Features
+**Phase 2: Abnormal Ignition Start Behavior Detection**
+- Detection of unusual vehicle ignition patterns using Geotab Connector data
+- Analysis of start/stop sequences, timing anomalies, and unauthorized access
+- Integration with fleet management systems for real-time monitoring
 
--  **Industry Standard Architecture**: Modular, scalable, and maintainable codebase
--  **Multiple ML Algorithms**: Isolation Forest, Random Forest, LSTM, and ensemble methods
--  **Comprehensive Feature Engineering**: Advanced signal processing and temporal features
--  **Model Versioning**: MLflow integration for experiment tracking
--  **Production Ready**: ONNX export for deployment in ingestion pipeline
--  **Synthetic Data Generation**: Integration with Geotab connector for training data
--  **Comprehensive Testing**: Unit tests, integration tests, and model validation
--  **Documentation**: Detailed docs with research references and implementation guides
+**Phase 3: Sensor Data Spike Detection**
+- Monitoring of roadside sensors and backend system data
+- Detection of sensor malfunctions, data corruption, and environmental anomalies
+- Real-time processing of time-series sensor data
+
+## Architecture Design
+
+The platform follows a modular, extensible architecture that supports multiple use cases:
+
+```
+VFSOC Platform Architecture
+├── Data Layer (Multi-source support)
+├── Feature Engineering (Domain-specific)
+├── ML Models (Algorithm library)
+├── Evaluation Framework (Unified metrics)
+├── Deployment Pipeline (ONNX/Production ready)
+└── Alert System (Configurable outputs)
+```
+
+### Core ML Algorithms
+
+**Primary Algorithm: Isolation Forest**
+- **Unsupervised Learning**: No need for labeled anomaly data across all use cases
+- **Outlier Detection**: Excellent for detecting sparse outliers in various data types
+- **Real-time Performance**: Fast inference suitable for production environments
+- **Scalable**: Efficient processing of large datasets from multiple sources
+- **Robust**: Handles normal variations across different domains
+
+**Secondary Algorithms**
+1. **Z-score Analysis**: Statistical approach for small training sets
+2. **One-Class SVM**: Learns tight boundaries around normal patterns
+3. **LSTM Autoencoders**: For time-series anomaly detection (future implementation)
+
+## Current Focus: Energy Consumption Detection
+
+### Problem Statement
+Irregular energy consumption patterns in EV charging stations indicating potential security and operational issues.
+
+### ML Approach
+- **Model**: Isolation Forest (primary) + Z-score analysis (secondary)
+- **Features**: Energy consumption patterns, billing ratios, vehicle baselines, temporal factors
+- **Output**: Real-time JSON alerts with severity classification
+
+### Key Features Engineered
+
+| Feature | Description | Use Case |
+|---------|-------------|----------|
+| `energy` | Energy delivered in session (kWh) | Energy Consumption |
+| `billing_per_kWh` | Derived billing rate | Energy Consumption |
+| `vehicle_mean_energy` | Historical average per vehicle | Energy Consumption |
+| `z_score_energy` | Standardized energy score | Energy Consumption |
+
+### Alert Output Format
+
+```json
+{
+  "alert_type": "IrregularEnergyConsumption",
+  "vehicle_id": "VH_002",
+  "station_id": "CHG_01", 
+  "timestamp": "2025-06-05T08:24:00Z",
+  "energy": 92.5,
+  "expected_range": "12-45 kWh",
+  "anomaly_score": 0.98,
+  "severity": "high"
+}
+```
+
+### Data Simulation Strategy
+
+**Current Dataset Simulation:**
+- **Total Logs**: ~3,100 charging sessions
+- **Coverage**: 5-10 vehicles across 5 charging stations
+- **Normal Sessions**: 12-45 kWh with ±10% variability by vehicle type
+- **Anomaly Injection**: 5-8% rate with specific patterns:
+  - Low Energy: <5 kWh (phantom charges, equipment failures)
+  - High Energy: >80 kWh (over-delivery, false logging)
+  - Billing Anomalies: Distorted billing calculations
+
+## Platform Features
+
+- **Modular Architecture**: Easy extension for new use cases and data sources
+- **Multiple ML Algorithms**: Isolation Forest, statistical methods, ensemble approaches
+- **Domain-Agnostic Feature Engineering**: Configurable feature extraction for different data types
+- **Unified Evaluation Framework**: Consistent metrics across all anomaly detection tasks
+- **Production-Ready Deployment**: ONNX export, containerization support
+- **Real-Time Processing**: Optimized for streaming data and immediate alerts
+- **Comprehensive Logging**: MLflow integration for experiment tracking and model versioning
+- **Industry Standards**: Following security, scalability, and maintainability best practices
 
 ## Project Structure
 
@@ -45,80 +126,67 @@ VFSOC-ML-Models/
 ├── README.md
 ├── requirements.txt
 ├── pyproject.toml
-├── setup.py
-├── .env.example
 ├── .gitignore
-├── docker/
-│   ├── Dockerfile
-│   └── docker-compose.yml
 ├── config/
-│   ├── model_config.yaml
-│   ├── feature_config.yaml
-│   └── training_config.yaml
+│   ├── energy_consumption_config.yaml      # Current MVP configuration
+│   ├── ignition_behavior_config.yaml       # Future Phase 2
+│   └── sensor_spike_config.yaml            # Future Phase 3
 ├── src/
 │   └── vfsoc_ml/
 │       ├── __init__.py
-│       ├── data/
+│       ├── data/                           # Multi-source data handling
 │       │   ├── __init__.py
-│       │   ├── data_loader.py
-│       │   ├── feature_engineering.py
-│       │   └── synthetic_generator.py
-│       ├── models/
+│       │   ├── base_loader.py              # Base data loader interface
+│       │   ├── energy_data_loader.py       # Energy consumption data
+│       │   ├── geotab_data_loader.py       # Future: Geotab connector data
+│       │   ├── sensor_data_loader.py       # Future: Sensor data
+│       │   └── feature_engineering.py     # Domain-specific feature engineering
+│       ├── models/                         # ML model library
 │       │   ├── __init__.py
-│       │   ├── base_model.py
-│       │   ├── isolation_forest.py
-│       │   ├── random_forest.py
-│       │   ├── lstm_detector.py
-│       │   └── ensemble.py
-│       ├── preprocessing/
+│       │   ├── base_anomaly_detector.py    # Base anomaly detection interface
+│       │   ├── isolation_forest.py        # Isolation Forest implementation
+│       │   ├── statistical_detectors.py   # Z-score, MAD, etc.
+│       │   └── ensemble.py                # Ensemble methods
+│       ├── evaluation/                     # Unified evaluation framework
 │       │   ├── __init__.py
-│       │   ├── signal_processor.py
-│       │   └── feature_extractor.py
-│       ├── training/
+│       │   ├── metrics.py                  # Domain-agnostic metrics
+│       │   └── validators.py              # Data quality validation
+│       ├── deployment/                     # Production deployment
 │       │   ├── __init__.py
-│       │   ├── trainer.py
-│       │   └── evaluator.py
-│       ├── deployment/
-│       │   ├── __init__.py
-│       │   ├── onnx_converter.py
-│       │   └── model_server.py
-│       └── utils/
+│       │   ├── onnx_converter.py          # ONNX model conversion
+│       │   ├── api_server.py              # REST API server
+│       │   └── batch_processor.py         # Batch processing
+│       └── utils/                          # Common utilities
 │           ├── __init__.py
-│           ├── logger.py
-│           ├── metrics.py
-│           └── visualization.py
-├── notebooks/
-│   ├── 01_data_exploration.ipynb
-│   ├── 02_feature_engineering.ipynb
-│   ├── 03_model_development.ipynb
-│   └── 04_model_evaluation.ipynb
-├── tests/
+│           ├── logger.py                   # Logging utilities
+│           ├── config_manager.py           # Configuration management
+│           └── visualization.py           # Plotting and visualization
+├── data/                                   # Data storage
+│   ├── raw/                               # Raw datasets (all use cases)
+│   ├── processed/                         # Processed datasets
+│   └── features/                          # Feature datasets
+├── models/                                # Model storage
+│   ├── trained/                           # Trained models
+│   └── onnx/                             # ONNX exported models
+├── scripts/                               # Execution scripts
+│   ├── train_model.py                     # General training script
+│   ├── generate_synthetic_data.py         # Data generation
+│   ├── convert_to_onnx.py                # Model conversion
+│   └── deploy_model.py                   # Deployment script
+├── notebooks/                             # Analysis notebooks
+│   ├── 01_data_exploration.ipynb         # Data analysis
+│   ├── 02_feature_engineering.ipynb      # Feature development
+│   ├── 03_model_development.ipynb        # Model experimentation
+│   └── 04_evaluation_analysis.ipynb      # Results analysis
+├── tests/                                 # Test suite
 │   ├── __init__.py
-│   ├── unit/
-│   ├── integration/
-│   └── conftest.py
-├── data/
-│   ├── raw/
-│   ├── processed/
-│   └── synthetic/
-├── models/
-│   ├── trained/
-│   ├── onnx/
-│   └── experiments/
-├── scripts/
-│   ├── train_model.py
-│   ├── evaluate_model.py
-│   ├── generate_synthetic_data.py
-│   └── convert_to_onnx.py
-├── docs/
-│   ├── api_reference.md
-│   ├── model_architecture.md
-│   ├── deployment_guide.md
-│   └── research_background.md
-└── research/
-    ├── papers/
-    ├── benchmarks/
-    └── experiments/
+│   ├── unit/                             # Unit tests
+│   ├── integration/                      # Integration tests
+│   └── performance/                      # Performance tests
+└── deployment/                           # Deployment configurations
+    ├── docker/                           # Docker configurations
+    ├── k8s/                             # Kubernetes configurations
+    └── cloud/                           # Cloud deployment configs
 ```
 
 ## Quick Start
@@ -144,138 +212,165 @@ pip install -e .
 ### 2. Configuration
 
 ```bash
-# Copy environment template
-cp .env.example .env
-
-# Edit configuration files
-# config/model_config.yaml - Model hyperparameters
-# config/feature_config.yaml - Feature engineering settings
-# config/training_config.yaml - Training parameters
+# Edit configuration for your use case
+# Current MVP: config/energy_consumption_config.yaml
+# Future: config/ignition_behavior_config.yaml, config/sensor_spike_config.yaml
 ```
 
-### 3. Generate Synthetic Data
+### 3. Generate Synthetic Data (for testing)
 
 ```bash
-# Generate training data using Geotab connector
-python scripts/generate_synthetic_data.py --config config/training_config.yaml
+# Generate synthetic energy consumption data
+python scripts/generate_synthetic_data.py --output data/raw/synthetic_energy_data.csv
 ```
 
 ### 4. Train Models
 
 ```bash
-# Train all models
-python scripts/train_model.py --config config/model_config.yaml
+# Train the current MVP model (energy consumption)
+python scripts/train_model.py
 
-# Train specific model
-python scripts/train_model.py --model isolation_forest --config config/model_config.yaml
+# Future: Train other models with different configs
+# python scripts/train_model.py --config config/ignition_behavior_config.yaml
+# python scripts/train_model.py --config config/sensor_spike_config.yaml
 ```
 
-### 5. Evaluate Models
+### 5. Convert to ONNX (Production Deployment)
 
 ```bash
-# Evaluate trained models
-python scripts/evaluate_model.py --model-path models/trained/gps_jamming_detector.pkl
+# Convert trained model to ONNX for production
+python scripts/convert_to_onnx.py
 ```
-
-### 6. Convert to ONNX
-
-```bash
-# Convert best model to ONNX for production deployment
-python scripts/convert_to_onnx.py --model-path models/trained/best_model.pkl --output models/onnx/gps_jamming_detector.onnx
-```
-
-## Models Overview
-
-### Primary Algorithm: Isolation Forest
-
-Based on research, **Isolation Forest** is selected as the primary algorithm for GPS jamming detection because:
-
-- **Unsupervised Learning**: No need for labeled jamming data
-- **Anomaly Detection**: Excellent for detecting unusual signal patterns
-- **Real-time Performance**: Fast inference suitable for production
-- **Robust to Noise**: Handles GPS signal variations well
-
-### Secondary Algorithms
-
-1. **Random Forest Classifier**: For supervised learning when labeled data is available
-2. **LSTM Autoencoder**: For temporal pattern analysis and sequence anomaly detection
-3. **Ensemble Model**: Combines multiple approaches for improved accuracy
-
-## Key Features for GPS Jamming Detection
-
-Based on research and VFSOC feature engineering:
-
-### Signal Features
-- GPS signal strength variations
-- Signal loss frequency and duration
-- Signal strength variance and patterns
-- Trip-based jamming event clustering
-
-### Temporal Features
-- Time-based patterns in signal loss
-- Frequency of jamming events per trip
-- Duration and spacing of jamming incidents
-- Cross-correlation analysis of signal patterns
-
-### Contextual Features
-- Vehicle location and movement patterns
-- Time of day and operational context
-- Driver presence and authentication status
-- Environmental factors affecting GPS reception
 
 ## Model Performance Targets
 
-| Metric | Target | Current Best |
+### Current MVP (Energy Consumption)
+| Metric | Target | Description |
 |--------|--------|-------------|
-| Precision | > 0.90 | TBD |
-| Recall | > 0.85 | TBD |
-| F1-Score | > 0.87 | TBD |
-| False Positive Rate | < 0.05 | TBD |
-| Inference Time | < 100ms | TBD |
+| Precision | > 0.90 | Minimize false positive alerts |
+| Recall | > 0.85 | Catch majority of actual anomalies |
+| F1-Score | > 0.87 | Balanced precision and recall |
+| False Positive Rate | < 0.05 | Keep false alarms low |
+| Inference Time | < 100ms | Real-time processing capability |
 
-## Research Foundation
+### Future Performance Standards
+- **Ignition Behavior**: Sub-second detection of abnormal start sequences
+- **Sensor Spikes**: Real-time processing of high-frequency sensor data streams
+- **Cross-Platform**: Consistent performance across all use cases
 
-This implementation is based on cutting-edge research in GNSS interference detection:
+## Use Case Extensions
 
-- **Signal Processing Approaches**: Correlation peak monitoring, power-based detection
-- **Machine Learning Methods**: SVM, Random Forest, Neural Networks for anomaly detection
-- **Feature Engineering**: Time-series analysis, statistical signal processing
-- **Ensemble Techniques**: Combining multiple detection algorithms
+### Adding New Use Cases
 
-Key papers referenced:
-- "Recent Advances on Jamming and Spoofing Detection in GNSS" (Sensors, 2024)
-- "Self-Supervised Federated GNSS Spoofing Detection" (arXiv, 2025)
-- "Towards Simple Machine Learning Baselines for GNSS RFI Detection" (arXiv, 2024)
+The platform is designed for easy extension. To add a new use case:
 
-## Integration with VFSOC
+1. **Create Configuration**: Add new config file (e.g., `config/new_usecase_config.yaml`)
+2. **Data Loader**: Implement data loader in `src/vfsoc_ml/data/`
+3. **Features**: Add domain-specific features to feature engineering
+4. **Training**: Use existing training pipeline with new configuration
+5. **Evaluation**: Leverage unified evaluation framework
+6. **Deployment**: Use existing ONNX conversion and deployment tools
 
-This ML model integrates seamlessly with the existing VFSOC infrastructure:
+### Configuration Management
 
-1. **Data Source**: Uses synthetic data from `GeotabConnector` for training
-2. **Feature Pipeline**: Leverages existing `GeotabFeatureExtractor`
-3. **Alert System**: Integrates with `GpsJammingRule` for production deployment
-4. **Database**: Stores model predictions and confidence scores
+Each use case has its own configuration file following a standard structure:
+- Data sources and preprocessing parameters
+- Feature engineering specifications
+- Model parameters and hyperparameters
+- Evaluation metrics and thresholds
+- Alert formatting and severity levels
+- Deployment configurations
+
+## Production Deployment Options
+
+### 1. Real-time API
+```bash
+# Start REST API server
+python scripts/deploy_model.py --mode api --port 8080
+```
+
+### 2. Batch Processing
+```bash
+# Process batch data
+python scripts/deploy_model.py --mode batch --input data.csv --output results.json
+```
+
+### 3. Container Deployment
+```bash
+# Build Docker container
+docker build -t vfsoc-ml:latest .
+
+# Run container
+docker run -p 8080:8080 vfsoc-ml:latest
+```
+
+### 4. Cloud Deployment
+- Kubernetes configurations provided in `deployment/k8s/`
+- Cloud-specific configs in `deployment/cloud/`
+- Supports AWS, Azure, GCP deployments
+
+## Development Workflow
+
+### 1. Research Phase
+- Use Jupyter notebooks for exploration (`notebooks/`)
+- Experiment with new algorithms and features
+- Validate approaches on synthetic/test data
+
+### 2. Implementation Phase
+- Implement new features in modular components
+- Add comprehensive unit and integration tests
+- Update configuration files and documentation
+
+### 3. Evaluation Phase
+- Use unified evaluation framework for consistent metrics
+- Compare performance across different algorithms
+- Validate on real-world data when available
+
+### 4. Deployment Phase
+- Convert models to ONNX for production efficiency
+- Deploy using containerized infrastructure
+- Monitor performance and data drift
 
 ## Contributing
 
-Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting pull requests.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-detection-algorithm`)
+3. Make your changes following the established patterns
+4. Add tests for new functionality
+5. Update documentation and configuration as needed
+6. Submit a pull request
 
-## License
+## Future Roadmap
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+### Phase 1: MVP (Current) - Energy Consumption Detection
+- [x] Core platform architecture
+- [x] Energy consumption anomaly detection
+- [x] Synthetic data generation
+- [x] Model training and evaluation pipeline
+- [x] ONNX export capabilities
+
+### Phase 2: Ignition Behavior Detection
+- [ ] Geotab Connector integration
+- [ ] Ignition sequence analysis algorithms
+- [ ] Temporal pattern recognition for start/stop events
+- [ ] Fleet-specific behavioral baselines
+
+### Phase 3: Sensor Data Spike Detection
+- [ ] Time-series data processing pipeline
+- [ ] Real-time streaming data support
+- [ ] Environmental sensor integration
+- [ ] Advanced time-series anomaly detection
+
+### Phase 4: Platform Integration
+- [ ] Multi-use case ensemble models
+- [ ] Cross-domain anomaly correlation
+- [ ] Advanced visualization dashboards
+- [ ] Enterprise security integrations
+
 
 ## Support
 
-For questions and support:
-- Create an issue in this repository
+For questions, issues, or contributions:
+- Create an issue in the repository
 - Contact the VFSOC team
-- Check the [documentation](docs/)
-
-## Acknowledgments
-
-- VFSOC project team for infrastructure and requirements
-- Research community for GPS jamming detection methodologies
-- Open source ML community for tools and frameworks 
-=======
-# VFSOC-ML-Models
->>>>>>> a56e80c169df664c6ca637533262909c7694b4e7
+- Review documentation in `docs/` directory

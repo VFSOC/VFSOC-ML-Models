@@ -1,0 +1,105 @@
+# Ignition Behavior Anomaly Detection Configuration (Phase 2)
+# Focused on detecting abnormal ignition start behavior using Geotab Connector data
+
+# Data Configuration
+data:
+  raw_data_path: "data/raw/geotab_connector_data.csv"
+  processed_data_path: "data/processed/ignition/"
+  features_data_path: "data/features/ignition/"
+  
+  # Data preprocessing parameters
+  preprocessing:
+    remove_outliers: true
+    outlier_threshold: 3.0
+    min_ignition_duration: 1.0  # Minimum seconds for valid ignition
+    max_ignition_duration: 300.0  # Maximum realistic ignition time
+    
+  split:
+    train_ratio: 0.7
+    validation_ratio: 0.15
+    test_ratio: 0.15
+    random_state: 42
+
+# Feature Engineering Configuration
+features:
+  # Core ignition features
+  core:
+    - ignition_duration
+    - ignition_attempts
+    - time_between_attempts
+    - ignition_success_rate
+    
+  # Temporal features
+  temporal:
+    - hour_of_day
+    - day_of_week
+    - is_weekend
+    - time_since_last_ignition
+    
+  # Vehicle behavior features
+  vehicle:
+    - vehicle_ignition_history
+    - average_ignition_duration
+    - ignition_pattern_consistency
+    
+  # Geotab specific features
+  geotab:
+    - engine_diagnostic_codes
+    - vehicle_location_context
+    - driver_behavior_score
+
+# Model Configuration
+model:
+  # Primary model: Isolation Forest
+  isolation_forest:
+    n_estimators: 200
+    contamination: 0.05  # Expected 5% anomaly rate
+    max_samples: "auto"
+    max_features: 0.8
+    bootstrap: false
+    random_state: 42
+    n_jobs: -1
+    
+  # Secondary model: Time series analysis
+  time_series:
+    window_size: 10  # Number of previous ignition events to consider
+    threshold: 3.0  # Standard deviations for outlier detection
+
+# Alert Configuration
+alerts:
+  format: "json"
+  schema:
+    alert_type: "AbnormalIgnitionBehavior"
+    vehicle_id: "string"
+    driver_id: "string"
+    timestamp: "ISO8601"
+    ignition_duration: "float"
+    anomaly_type: "string"  # unauthorized_access, equipment_failure, security_breach
+    anomaly_score: "float"
+    severity: "string"
+    
+  severity_thresholds:
+    low: 0.6
+    medium: 0.8
+    high: 0.9
+
+# Evaluation Configuration
+evaluation:
+  metrics:
+    - precision
+    - recall
+    - f1_score
+    - roc_auc
+    - temporal_consistency_score
+    
+  targets:
+    precision: 0.92
+    recall: 0.88
+    f1_score: 0.90
+    inference_time_ms: 50
+
+# MLflow Configuration
+mlflow:
+  experiment_name: "ignition_behavior_detection"
+  tracking_uri: "sqlite:///mlflow.db"
+  artifact_location: "mlruns" 

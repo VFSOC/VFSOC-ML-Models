@@ -1,0 +1,274 @@
+# Energy Consumption Anomaly Detection Configuration
+# Focused on detecting meter tampering, unauthorized power drain, 
+# broken billing logic, and station configuration errors
+
+# Data Configuration
+data:
+  raw_data_path: "data/raw/station_data_dataverse.csv"
+  synthetic_data_path: "data/raw/SYNTHETIC_EV_DATA.csv"
+  processed_data_path: "data/processed/"
+  features_data_path: "data/features/"
+  
+  # Data preprocessing parameters
+  preprocessing:
+    remove_outliers: true
+    outlier_threshold: 3.0  # Standard deviations
+    min_session_duration: 0.05  # Minimum charging duration in hours (3 minutes)
+    max_session_duration: 12.0  # Maximum realistic charging duration
+    min_energy_delivered: 0.5  # Minimum kWh (filter phantom charges)
+    max_energy_delivered: 150.0  # Maximum realistic kWh for EV charging
+    
+  # Train/validation/test split
+  split:
+    train_ratio: 0.7
+    validation_ratio: 0.15
+    test_ratio: 0.15
+    random_state: 42
+
+# Simulation Strategy (aligned with user requirements)
+simulation:
+  total_logs: 3100
+  vehicles:
+    count: 8  # 5-10 vehicles as specified
+    sessions_per_vehicle: [300, 600]  # Range per vehicle
+    vehicle_types:
+      city_ev:
+        energy_range: [12, 30]  # kWh for city vehicles
+        variability: 0.10  # ±10% randomness
+      long_range_ev:
+        energy_range: [25, 45]  # kWh for long-range vehicles
+        variability: 0.10  # ±10% randomness
+  
+  stations:
+    count: 5
+    
+  anomalies:
+    injection_rate: 0.06  # 6% anomaly rate (5-8% range)
+    types:
+      low_energy:
+        threshold: 5.0  # <5 kWh (phantom charges, failures)
+        proportion: 0.4  # 40% of anomalies
+      high_energy:
+        threshold: 80.0  # >80 kWh (over-delivery, false logs)
+        proportion: 0.4  # 40% of anomalies
+      billing_mismatch:
+        proportion: 0.2  # 20% of anomalies (billing issues)
+
+# Feature Engineering Configuration (core features for energy anomaly detection)
+features:
+  # Core energy features (primary focus)
+  core:
+    - energy  # Energy delivered in the session (kWh)
+    - billing_per_kWh  # Derived: billing ÷ energy
+    - vehicle_mean_energy  # Historical average per vehicle
+    - z_score_energy  # (energy - mean) / std_dev
+    
+  # Additional energy-specific features
+  energy:
+    - kwh_total
+    - charge_time_hrs
+    - energy_rate  # kWh per hour
+    - normalized_energy_per_vehicle  # Normalized by vehicle's historical average
+    - energy_deviation  # Absolute deviation from vehicle mean
+    
+  # Vehicle behavior features
+  vehicle:
+    - vehicle_session_count  # Total sessions for this vehicle
+    - vehicle_avg_energy  # Vehicle's average energy consumption
+    - vehicle_energy_std  # Vehicle's energy consumption standard deviation
+    - vehicle_energy_percentile  # Current session percentile within vehicle history
+    
+  # Station context features
+  station:
+    - station_avg_energy  # Average energy at this station
+    - station_energy_variance  # Energy variance at station
+    - deviation_from_station_avg  # Session deviation from station average
+    
+  # Billing and cost features
+  billing:
+    - dollars_total  # Total cost
+    - cost_per_kwh  # dollars / energy
+    - expected_cost_per_kwh  # Expected rate for this station/time
+    - billing_anomaly_score  # Deviation from expected billing
+
+# Model Configuration
+model:
+  # Primary model: Isolation Forest
+  isolation_forest:
+    n_estimators: 200
+    contamination: 0.06  # Expected 6% anomaly rate
+    max_samples: "auto"
+    max_features: 0.8  # Use 80% of features for each tree
+    bootstrap: false
+    random_state: 42
+    n_jobs: -1
+    
+  # Secondary model: Z-score analysis
+  z_score:
+    threshold: 3.0  # Standard deviations for outlier detection
+    per_vehicle: true  # Calculate z-scores per vehicle
+    min_sessions: 10  # Minimum sessions needed for vehicle baseline
+    
+  # Optional: One-Class SVM
+  one_class_svm:
+    kernel: "rbf"
+    gamma: "scale"
+    nu: 0.06  # Expected outlier fraction
+    
+  # Ensemble configuration
+  ensemble:
+    models:
+      - isolation_forest
+      - z_score
+    weights: [0.7, 0.3]  # Isolation Forest gets more weight
+    voting: "soft"
+
+# Training Configuration
+training:
+  # Cross-validation
+  cv_folds: 5
+  cv_scoring: "roc_auc"
+  
+  # Model selection
+  hyperparameter_tuning: true
+  tuning_method: "grid_search"
+  
+  # Hyperparameter grids
+  param_grid:
+    isolation_forest:
+      n_estimators: [100, 200, 300]
+      contamination: [0.05, 0.06, 0.08]  # Within 5-8% range
+      max_features: [0.6, 0.8, 1.0]
+    
+    z_score:
+      threshold: [2.5, 3.0, 3.5]
+  
+  # Model persistence
+  save_best_model: true
+  model_save_path: "models/trained/"
+  
+# Evaluation Configuration
+evaluation:
+  # Primary metrics for anomaly detection
+  metrics:
+    - precision
+    - recall
+    - f1_score
+    - roc_auc
+    - average_precision
+    - false_positive_rate
+    
+  # Performance targets
+  targets:
+    precision: 0.90
+    recall: 0.85
+    f1_score: 0.87
+    false_positive_rate: 0.05
+    inference_time_ms: 100
+    
+  # Anomaly detection thresholds to test
+  thresholds:
+    contamination_rates: [0.05, 0.06, 0.07, 0.08]
+    
+  # Evaluation by anomaly type
+  anomaly_types:
+    - low_energy
+    - high_energy
+    - billing_mismatch
+    
+  # Visualization
+  plots:
+    - energy_distribution
+    - anomaly_scores
+    - vehicle_baselines
+    - billing_analysis
+    - confusion_matrix
+
+# Alert Configuration (JSON output format)
+alerts:
+  format: "json"
+  schema:
+    alert_type: "IrregularEnergyConsumption"
+    vehicle_id: "string"
+    station_id: "string"
+    timestamp: "ISO8601"
+    energy: "float"
+    expected_range: "string"
+    anomaly_score: "float"
+    severity: "string"  # low, medium, high
+    
+  severity_thresholds:
+    low: 0.6
+    medium: 0.8
+    high: 0.9
+    
+  expected_ranges:
+    city_ev: "12-30 kWh"
+    long_range_ev: "25-45 kWh"
+    default: "12-45 kWh"
+
+# Deployment Configuration
+deployment:
+  # ONNX export settings
+  onnx:
+    export_path: "models/onnx/"
+    model_name: "energy_consumption_anomaly_detector"
+    opset_version: 11
+    
+  # API configuration
+  api:
+    model_endpoint: "/api/v1/predict/energy-anomaly"
+    batch_size: 100
+    timeout: 30
+    response_format: "json"
+    
+  # Real-time monitoring
+  monitoring:
+    drift_detection: true
+    performance_tracking: true
+    alert_threshold: 0.1  # Alert if anomaly rate exceeds 10%
+    baseline_update_frequency: "weekly"
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  file: "logs/energy_consumption_training.log"
+  
+# Experiment Tracking
+mlflow:
+  experiment_name: "irregular_energy_consumption_detection"
+  tracking_uri: "sqlite:///mlflow.db"
+  artifact_location: "mlruns"
+  
+# Data Quality Checks
+data_quality:
+  checks:
+    - negative_energy_values
+    - zero_energy_values
+    - unrealistic_high_energy  # >150 kWh
+    - phantom_charges  # <0.5 kWh
+    - billing_consistency
+    - temporal_consistency
+    
+  thresholds:
+    max_negative_percentage: 0.0  # No negative values allowed
+    max_phantom_percentage: 1.0  # Max 1% phantom charges
+    max_unrealistic_percentage: 0.5  # Max 0.5% unrealistic values
+    
+# Vehicle Types Configuration
+vehicle_types:
+  city_ev:
+    typical_range: [12, 30]
+    battery_capacity: 40  # kWh
+    charging_efficiency: 0.9
+    
+  long_range_ev:
+    typical_range: [25, 45]
+    battery_capacity: 75  # kWh
+    charging_efficiency: 0.92
+    
+  commercial_ev:
+    typical_range: [40, 80]
+    battery_capacity: 100  # kWh
+    charging_efficiency: 0.88 

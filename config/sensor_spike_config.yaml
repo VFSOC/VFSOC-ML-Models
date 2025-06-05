@@ -1,0 +1,164 @@
+# Sensor Data Spike Detection Configuration (Phase 3)
+# Focused on detecting spikes and anomalies in roadside sensors and backend systems
+
+# Data Configuration
+data:
+  raw_data_path: "data/raw/sensor_data_streams.csv"
+  processed_data_path: "data/processed/sensors/"
+  features_data_path: "data/features/sensors/"
+  
+  # Data preprocessing parameters
+  preprocessing:
+    remove_outliers: true
+    outlier_threshold: 4.0  # More lenient for sensor data
+    min_sensor_value: -999.0  # Minimum valid sensor reading
+    max_sensor_value: 9999.0  # Maximum valid sensor reading
+    sampling_rate: 1.0  # Seconds between readings
+    
+  split:
+    train_ratio: 0.7
+    validation_ratio: 0.15
+    test_ratio: 0.15
+    random_state: 42
+
+# Feature Engineering Configuration
+features:
+  # Core sensor features
+  core:
+    - sensor_value
+    - sensor_spike_magnitude
+    - sensor_baseline_deviation
+    - rolling_sensor_average
+    
+  # Time series features
+  temporal:
+    - timestamp
+    - hour_of_day
+    - day_of_week
+    - season
+    - time_since_last_spike
+    
+  # Statistical features
+  statistical:
+    - rolling_mean_5min
+    - rolling_std_5min
+    - rolling_mean_1hour
+    - rolling_std_1hour
+    - z_score_5min
+    - z_score_1hour
+    
+  # Sensor specific features
+  sensor:
+    - sensor_type
+    - sensor_location
+    - sensor_health_status
+    - environmental_conditions
+
+# Model Configuration
+model:
+  # Primary model: Isolation Forest for spike detection
+  isolation_forest:
+    n_estimators: 300
+    contamination: 0.03  # Expected 3% spike rate
+    max_samples: 1000  # Limited for real-time processing
+    max_features: 0.9
+    bootstrap: false
+    random_state: 42
+    n_jobs: -1
+    
+  # Secondary model: LSTM Autoencoder for time series
+  lstm_autoencoder:
+    sequence_length: 60  # 1 minute of data at 1-second intervals
+    encoding_dim: 32
+    epochs: 100
+    batch_size: 64
+    learning_rate: 0.001
+    threshold_percentile: 95  # Top 5% reconstruction errors as anomalies
+    
+  # Ensemble configuration
+  ensemble:
+    models:
+      - isolation_forest
+      - lstm_autoencoder
+    weights: [0.6, 0.4]
+    voting: "soft"
+
+# Real-time Processing Configuration
+streaming:
+  window_size: 300  # 5 minutes of data
+  sliding_window: 60  # 1 minute slide
+  buffer_size: 3600  # 1 hour buffer
+  processing_interval: 5  # Process every 5 seconds
+  
+# Alert Configuration
+alerts:
+  format: "json"
+  schema:
+    alert_type: "SensorDataSpike"
+    sensor_id: "string"
+    location_id: "string"
+    timestamp: "ISO8601"
+    sensor_value: "float"
+    baseline_value: "float"
+    spike_magnitude: "float"
+    anomaly_type: "string"  # data_spike, sensor_malfunction, data_corruption
+    anomaly_score: "float"
+    severity: "string"
+    
+  severity_thresholds:
+    low: 0.7
+    medium: 0.85
+    high: 0.95
+    
+  spike_detection:
+    magnitude_threshold: 5.0  # Standard deviations
+    duration_threshold: 30  # Seconds
+    frequency_threshold: 3  # Max spikes per hour
+
+# Evaluation Configuration
+evaluation:
+  metrics:
+    - precision
+    - recall
+    - f1_score
+    - roc_auc
+    - mean_detection_delay
+    - false_positive_rate_per_hour
+    
+  targets:
+    precision: 0.88
+    recall: 0.92
+    f1_score: 0.90
+    mean_detection_delay_seconds: 15
+    inference_time_ms: 25
+
+# Time Series Specific Configuration
+time_series:
+  seasonal_decomposition: true
+  trend_removal: true
+  differencing_order: 1
+  seasonal_period: 1440  # Daily seasonality (minutes)
+  
+# Sensor Types Configuration
+sensor_types:
+  temperature:
+    normal_range: [-40, 60]  # Celsius
+    spike_threshold: 10  # Degrees change
+    
+  humidity:
+    normal_range: [0, 100]  # Percentage
+    spike_threshold: 20  # Percentage change
+    
+  pressure:
+    normal_range: [950, 1050]  # hPa
+    spike_threshold: 50  # hPa change
+    
+  traffic_flow:
+    normal_range: [0, 2000]  # Vehicles per hour
+    spike_threshold: 500  # Vehicle count change
+
+# MLflow Configuration
+mlflow:
+  experiment_name: "sensor_spike_detection"
+  tracking_uri: "sqlite:///mlflow.db"
+  artifact_location: "mlruns" 

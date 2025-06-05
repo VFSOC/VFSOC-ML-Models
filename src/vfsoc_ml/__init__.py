@@ -1,29 +1,18 @@
 """
-VFSOC ML Models - GPS Jamming Detection
+VFSOC ML - Irregular Energy Consumption Detection
 
-A comprehensive machine learning framework for detecting GPS jamming attacks
-in vehicle fleet management systems.
+Machine learning models for detecting irregular energy consumption patterns
+in EV charging stations.
 """
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 __author__ = "VFSOC Team"
-__email__ = "vfsoc@example.com"
 
-# Core imports for easy access
-from .models.isolation_forest import IsolationForestDetector
-
-from .data.data_loader import VFSOCDataLoader
-from .data.synthetic_generator import SyntheticDataGenerator
-from .deployment.onnx_converter import ONNXConverter
+# Import main components
+from .data.data_loader import EnergyConsumptionDataLoader
+from .data.feature_engineering import EnergyConsumptionFeatureEngineer
 
 __all__ = [
-    # Models
-    "IsolationForestDetector",
-    
-    # Data handling
-    "VFSOCDataLoader",
-    "SyntheticDataGenerator",
-    
-    # Deployment
-    "ONNXConverter",
+    "EnergyConsumptionDataLoader",
+    "EnergyConsumptionFeatureEngineer",
 ] 

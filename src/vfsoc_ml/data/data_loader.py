@@ -1,191 +1,316 @@
 """
-Data loader for VFSOC GPS jamming detection models.
+Energy Consumption Data Loader
 
-This module handles loading and preprocessing of GPS jamming detection data
-from various sources including synthetic data and real vehicle telemetry.
+This module handles loading and preprocessing of EV charging station data
+for irregular energy consumption pattern detection.
 """
 
 import pandas as pd
 import numpy as np
-from pathlib import Path
-from typing import Union, Tuple, Optional, Dict, Any
 import logging
-import json
+from pathlib import Path
+from typing import Dict, Any, Optional, Tuple
+from datetime import datetime, timedelta
+import warnings
 
-logger = logging.getLogger(__name__)
+warnings.filterwarnings('ignore')
 
 
-class VFSOCDataLoader:
+class EnergyConsumptionDataLoader:
     """
-    Data loader for GPS jamming detection datasets.
+    Data loader for EV charging station energy consumption data.
     
-    Handles loading data from multiple formats and provides preprocessing
-    capabilities for machine learning model training.
+    Handles loading, cleaning, and preprocessing of charging session data
+    for anomaly detection.
     """
     
-    def __init__(self):
-        """Initialize the data loader."""
-        self.data = None
-        self.labels = None
-        self.feature_names = None
-        self.metadata = None
-        
-    def load_synthetic_data(self, data_path: Union[str, Path]) -> Tuple[pd.DataFrame, np.ndarray]:
+    def __init__(self, config: Dict[str, Any]):
         """
-        Load synthetic GPS jamming data.
+        Initialize the data loader.
         
         Args:
-            data_path: Path to the synthetic data directory
-            
+            config: Configuration dictionary containing data paths and parameters
+        """
+        self.config = config
+        self.logger = logging.getLogger(__name__)
+        
+        # Data paths
+        self.raw_data_path = config['data']['raw_data_path']
+        self.synthetic_data_path = config['data']['synthetic_data_path']
+        self.processed_data_path = config['data']['processed_data_path']
+        
+        # Preprocessing parameters
+        self.preprocessing_config = config['data']['preprocessing']
+        
+    def load_station_data(self) -> pd.DataFrame:
+        """
+        Load the main EV charging station dataset.
+        
         Returns:
-            Tuple of (features_df, labels_array)
+            DataFrame containing charging session data
         """
-        data_path = Path(data_path)
+        self.logger.info(f"Loading station data from: {self.raw_data_path}")
         
-        if not data_path.exists():
-            raise FileNotFoundError(f"Data path does not exist: {data_path}")
-        
-        # Try different file formats
-        if (data_path / "features.pkl").exists():
-            features_df = pd.read_pickle(data_path / "features.pkl")
-            labels = np.load(data_path / "labels.npy")
-        elif (data_path / "features.csv").exists():
-            features_df = pd.read_csv(data_path / "features.csv")
-            labels = np.loadtxt(data_path / "labels.csv", delimiter=",", dtype=int)
-        elif (data_path / "features.parquet").exists():
-            features_df = pd.read_parquet(data_path / "features.parquet")
-            labels_df = pd.read_parquet(data_path / "labels.parquet")
-            labels = labels_df["labels"].values
-        else:
-            raise FileNotFoundError("No supported data files found in the directory")
-        
-        # Load metadata if available
-        metadata_path = data_path / "metadata.json"
-        if metadata_path.exists():
-            with open(metadata_path, 'r') as f:
-                self.metadata = json.load(f)
-        
-        self.data = features_df
-        self.labels = labels
-        self.feature_names = features_df.columns.tolist()
-        
-        logger.info(f"Loaded {len(features_df)} samples with {features_df.shape[1]} features")
-        logger.info(f"Class distribution - Normal: {np.sum(labels == 1)}, Jamming: {np.sum(labels == -1)}")
-        
-        return features_df, labels
+        try:
+            # Load the CSV file
+            df = pd.read_csv(self.raw_data_path)
+            
+            self.logger.info(f"Loaded {len(df)} charging sessions")
+            self.logger.info(f"Columns: {list(df.columns)}")
+            
+            # Basic data validation
+            self._validate_required_columns(df)
+            
+            return df
+            
+        except Exception as e:
+            self.logger.error(f"Error loading station data: {str(e)}")
+            raise
     
-    def load_csv_data(self, features_path: Union[str, Path], 
-                     labels_path: Optional[Union[str, Path]] = None) -> Tuple[pd.DataFrame, Optional[np.ndarray]]:
+    def load_synthetic_data(self) -> pd.DataFrame:
         """
-        Load data from CSV files.
+        Load synthetic EV charging data if available.
+        
+        Returns:
+            DataFrame containing synthetic charging session data
+        """
+        self.logger.info(f"Loading synthetic data from: {self.synthetic_data_path}")
+        
+        try:
+            # Load the synthetic CSV file
+            df = pd.read_csv(self.synthetic_data_path)
+            
+            # Map synthetic data columns to match station data format
+            df = self._map_synthetic_columns(df)
+            
+            self.logger.info(f"Loaded {len(df)} synthetic charging sessions")
+            
+            return df
+            
+        except Exception as e:
+            self.logger.error(f"Error loading synthetic data: {str(e)}")
+            raise
+    
+    def preprocess_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Preprocess the charging session data.
         
         Args:
-            features_path: Path to features CSV file
-            labels_path: Optional path to labels CSV file
+            df: Raw charging session data
             
         Returns:
-            Tuple of (features_df, labels_array)
+            Preprocessed DataFrame
         """
-        features_df = pd.read_csv(features_path)
+        self.logger.info("Starting data preprocessing...")
         
-        labels = None
-        if labels_path:
-            labels = np.loadtxt(labels_path, delimiter=",", dtype=int)
+        # Make a copy to avoid modifying original data
+        processed_df = df.copy()
         
-        self.data = features_df
-        self.labels = labels
-        self.feature_names = features_df.columns.tolist()
+        # Clean and validate data
+        processed_df = self._clean_data(processed_df)
         
-        logger.info(f"Loaded CSV data with {len(features_df)} samples and {features_df.shape[1]} features")
+        # Handle missing values
+        processed_df = self._handle_missing_values(processed_df)
         
-        return features_df, labels
+        # Remove outliers
+        if self.preprocessing_config['remove_outliers']:
+            processed_df = self._remove_outliers(processed_df)
+        
+        # Parse datetime columns
+        processed_df = self._parse_datetime_columns(processed_df)
+        
+        # Validate data ranges
+        processed_df = self._validate_data_ranges(processed_df)
+        
+        self.logger.info(f"Preprocessing complete. Final dataset size: {len(processed_df)}")
+        
+        return processed_df
     
-    def get_train_test_split(self, test_size: float = 0.2, 
-                           random_state: int = 42) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray, np.ndarray]:
-        """
-        Split data into training and testing sets.
+    def _validate_required_columns(self, df: pd.DataFrame) -> None:
+        """Validate that required columns are present."""
+        required_columns = [
+            'sessionId', 'kwhTotal', 'chargeTimeHrs', 'stationId', 'userId'
+        ]
         
-        Args:
-            test_size: Proportion of data to use for testing
-            random_state: Random state for reproducibility
-            
-        Returns:
-            Tuple of (X_train, X_test, y_train, y_test)
-        """
-        if self.data is None or self.labels is None:
-            raise ValueError("No data loaded. Call load_* method first.")
+        missing_columns = [col for col in required_columns if col not in df.columns]
         
-        from sklearn.model_selection import train_test_split
-        
-        X_train, X_test, y_train, y_test = train_test_split(
-            self.data, self.labels, 
-            test_size=test_size, 
-            random_state=random_state,
-            stratify=self.labels
-        )
-        
-        logger.info(f"Split data - Train: {len(X_train)}, Test: {len(X_test)}")
-        
-        return X_train, X_test, y_train, y_test
+        if missing_columns:
+            raise ValueError(f"Missing required columns: {missing_columns}")
     
-    def get_feature_info(self) -> Dict[str, Any]:
-        """
-        Get information about the loaded features.
-        
-        Returns:
-            Dictionary containing feature information
-        """
-        if self.data is None:
-            return {}
-        
-        info = {
-            "n_samples": len(self.data),
-            "n_features": self.data.shape[1],
-            "feature_names": self.feature_names,
-            "feature_types": self.data.dtypes.to_dict(),
-            "missing_values": self.data.isnull().sum().to_dict(),
-            "feature_statistics": self.data.describe().to_dict()
+    def _map_synthetic_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Map synthetic data columns to match station data format."""
+        # Map synthetic column names to standard format
+        column_mapping = {
+            'connectionTime_decimal': 'startTime',
+            'chargingDuration': 'chargeTimeHrs',
+            'kWhDelivered': 'kwhTotal',
+            'dayIndicator': 'weekday'
         }
         
-        if self.labels is not None:
-            info["label_distribution"] = {
-                "normal": int(np.sum(self.labels == 1)),
-                "jamming": int(np.sum(self.labels == -1)),
-                "total": len(self.labels)
-            }
+        # Rename columns
+        df = df.rename(columns=column_mapping)
         
-        return info
+        # Add missing columns with default values
+        if 'sessionId' not in df.columns:
+            df['sessionId'] = range(len(df))
+        
+        if 'stationId' not in df.columns:
+            df['stationId'] = np.random.randint(1000, 9999, len(df))
+        
+        if 'userId' not in df.columns:
+            df['userId'] = np.random.randint(10000, 99999, len(df))
+        
+        if 'dollars' not in df.columns:
+            df['dollars'] = df['kwhTotal'] * 0.15  # Approximate cost
+        
+        return df
     
-    def preprocess_features(self, method: str = "robust") -> pd.DataFrame:
+    def _clean_data(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Clean the data by removing invalid entries."""
+        initial_size = len(df)
+        
+        # Remove rows with negative or zero energy consumption
+        df = df[df['kwhTotal'] > 0]
+        
+        # Remove rows with negative or zero charging time
+        df = df[df['chargeTimeHrs'] > 0]
+        
+        # Remove duplicate sessions
+        df = df.drop_duplicates(subset=['sessionId'], keep='first')
+        
+        removed_count = initial_size - len(df)
+        if removed_count > 0:
+            self.logger.info(f"Removed {removed_count} invalid/duplicate records")
+        
+        return df
+    
+    def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Handle missing values in the dataset."""
+        # Check for missing values
+        missing_counts = df.isnull().sum()
+        
+        if missing_counts.sum() > 0:
+            self.logger.info(f"Missing values found: {missing_counts[missing_counts > 0].to_dict()}")
+            
+            # Fill missing values based on column type
+            for column in df.columns:
+                if df[column].isnull().sum() > 0:
+                    if df[column].dtype in ['int64', 'float64']:
+                        # Fill numeric columns with median
+                        df[column] = df[column].fillna(df[column].median())
+                    else:
+                        # Fill categorical columns with mode
+                        df[column] = df[column].fillna(df[column].mode()[0])
+        
+        return df
+    
+    def _remove_outliers(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Remove outliers using statistical methods."""
+        initial_size = len(df)
+        threshold = self.preprocessing_config['outlier_threshold']
+        
+        # Define columns to check for outliers
+        numeric_columns = ['kwhTotal', 'chargeTimeHrs']
+        
+        for column in numeric_columns:
+            if column in df.columns:
+                # Calculate z-scores
+                z_scores = np.abs((df[column] - df[column].mean()) / df[column].std())
+                
+                # Remove outliers
+                df = df[z_scores <= threshold]
+        
+        removed_count = initial_size - len(df)
+        if removed_count > 0:
+            self.logger.info(f"Removed {removed_count} outliers")
+        
+        return df
+    
+    def _parse_datetime_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Parse datetime columns and extract time features."""
+        datetime_columns = ['created', 'ended', 'startTime', 'endTime']
+        
+        for column in datetime_columns:
+            if column in df.columns:
+                try:
+                    # Try to parse datetime
+                    df[column] = pd.to_datetime(df[column], errors='coerce')
+                    
+                    # Extract time features
+                    if column in ['created', 'startTime']:
+                        df[f'{column}_hour'] = df[column].dt.hour
+                        df[f'{column}_day_of_week'] = df[column].dt.dayofweek
+                        df[f'{column}_month'] = df[column].dt.month
+                        
+                except Exception as e:
+                    self.logger.warning(f"Could not parse datetime column {column}: {str(e)}")
+        
+        return df
+    
+    def _validate_data_ranges(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Validate that data values are within reasonable ranges."""
+        initial_size = len(df)
+        
+        # Energy consumption validation
+        min_energy = self.preprocessing_config['min_energy_delivered']
+        max_energy = self.preprocessing_config['max_energy_delivered']
+        df = df[(df['kwhTotal'] >= min_energy) & (df['kwhTotal'] <= max_energy)]
+        
+        # Charging duration validation
+        min_duration = self.preprocessing_config['min_session_duration']
+        max_duration = self.preprocessing_config['max_session_duration']
+        df = df[(df['chargeTimeHrs'] >= min_duration) & (df['chargeTimeHrs'] <= max_duration)]
+        
+        removed_count = initial_size - len(df)
+        if removed_count > 0:
+            self.logger.info(f"Removed {removed_count} records outside valid ranges")
+        
+        return df
+    
+    def get_data_summary(self, df: pd.DataFrame) -> Dict[str, Any]:
         """
-        Preprocess features using various scaling methods.
+        Get summary statistics of the dataset.
         
         Args:
-            method: Preprocessing method ('standard', 'robust', 'minmax')
+            df: DataFrame to summarize
             
         Returns:
-            Preprocessed features DataFrame
+            Dictionary containing summary statistics
         """
-        if self.data is None:
-            raise ValueError("No data loaded. Call load_* method first.")
+        summary = {
+            'total_sessions': len(df),
+            'unique_stations': df['stationId'].nunique() if 'stationId' in df.columns else 0,
+            'unique_users': df['userId'].nunique() if 'userId' in df.columns else 0,
+            'total_energy_kwh': df['kwhTotal'].sum() if 'kwhTotal' in df.columns else 0,
+            'avg_energy_per_session': df['kwhTotal'].mean() if 'kwhTotal' in df.columns else 0,
+            'avg_session_duration': df['chargeTimeHrs'].mean() if 'chargeTimeHrs' in df.columns else 0,
+            'date_range': {
+                'start': df['created'].min() if 'created' in df.columns else None,
+                'end': df['created'].max() if 'created' in df.columns else None
+            }
+        }
         
-        from sklearn.preprocessing import StandardScaler, RobustScaler, MinMaxScaler
+        return summary
+    
+    def save_processed_data(self, df: pd.DataFrame, filename: str = "processed_charging_data.csv") -> str:
+        """
+        Save processed data to file.
         
-        if method == "standard":
-            scaler = StandardScaler()
-        elif method == "robust":
-            scaler = RobustScaler()
-        elif method == "minmax":
-            scaler = MinMaxScaler()
-        else:
-            raise ValueError(f"Unknown preprocessing method: {method}")
+        Args:
+            df: Processed DataFrame
+            filename: Output filename
+            
+        Returns:
+            Path to saved file
+        """
+        # Create output directory
+        output_dir = Path(self.processed_data_path)
+        output_dir.mkdir(parents=True, exist_ok=True)
         
-        # Only scale numeric columns
-        numeric_columns = self.data.select_dtypes(include=[np.number]).columns
+        # Save to CSV
+        output_path = output_dir / filename
+        df.to_csv(output_path, index=False)
         
-        processed_data = self.data.copy()
-        processed_data[numeric_columns] = scaler.fit_transform(self.data[numeric_columns])
+        self.logger.info(f"Processed data saved to: {output_path}")
         
-        logger.info(f"Applied {method} scaling to {len(numeric_columns)} numeric features")
-        
-        return processed_data 
+        return str(output_path) 
